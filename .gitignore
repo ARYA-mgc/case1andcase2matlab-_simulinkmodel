@@ -1,0 +1,19 @@
+# MATLAB / Simulink .gitignore
+*.asv
+*.autosave
+*.bak
+*.slxc
+*.mex*
+slprj/
+sfprj/
+*.m~
+*.mdl~
+*.slx~
+*.r20*
+__pycache__/
+*.pyc
+
+# Operating System files
+Thumbs.db
+Desktop.ini
+.DS_Store
