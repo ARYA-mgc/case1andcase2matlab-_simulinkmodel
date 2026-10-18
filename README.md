@@ -27,7 +27,7 @@ The physical system consists of a 10L process reservoir, a 4.2L flush tank, an i
 
 ## Simulink Model Architecture
 
-The top-level model (`lam_stage2_system.mdl`) is split into four clean subsystems with straight signal routing:
+The top-level model (`lam_stage2_system.slx`) is split into four clean subsystems with straight signal routing:
 
 ![Simulink Architecture](images/simulink_01_top_level_architecture.png)
 
@@ -128,7 +128,7 @@ Pipe velocity is ~1.0 m/s in Case 1 and 1.5 m/s in Case 2. Reynolds number remai
    ```
 2. Open the model:
    ```matlab
-   open_system('lam_stage2_system.mdl');
+   open_system('lam_stage2_system.slx');
    ```
 3. Run the simulation and generate all verification plots:
    ```matlab
