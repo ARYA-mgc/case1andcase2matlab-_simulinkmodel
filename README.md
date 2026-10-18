@@ -1,12 +1,12 @@
-# LAM Research Challenge 3.0 — Stage 2: Digital Twin & Industrial Automation
+# LAM Research Challenge 3.0 - Stage 2: Digital Twin & Industrial Automation
 
 > **P&ID Drawing PID-001: Automated Chemical Distribution, Line Flush & Sump Protection System**  
-> Complete Hardware-in-the-Loop (HIL) Simulink Digital Twin, Embedded ESP32 Automation Controller Firmware, and Hydrodynamic Process Analytics.
+> Hardware-in-the-Loop (HIL) Simulink Digital Twin, Embedded ESP32 Automation Controller Firmware, and Hydrodynamic Process Analytics.
 
 ---
 
-## 📌 Table of Contents
-1. [Executive Summary](#executive-summary)
+## Table of Contents
+1. [Overview](#overview)
 2. [Process Flow & P&ID Drawing (PID-001)](#process-flow--pid-drawing-pid-001)
 3. [Simulink Digital Twin Architecture](#simulink-digital-twin-architecture)
    - [Top-Level Architecture Overview](#top-level-architecture-overview)
@@ -22,50 +22,49 @@
    - [Figure 4: FSM Automation Trajectory](#figure-4-fsm-automation-trajectory)
    - [Figure 5: Totalizer Cumulative Volume & Cutoff](#figure-5-totalizer-cumulative-volume--cutoff)
    - [Figure 6: Fluid Velocity & Reynolds Number Dynamics](#figure-6-fluid-velocity--reynolds-number-dynamics)
-6. [Repository Files & Explanations](#repository-files--explanations)
-7. [Getting Started (Run in MATLAB)](#getting-started-run-in-matlab)
-8. [Git Instructions (Pushing to GitHub)](#git-instructions-pushing-to-github)
+6. [Repository Files & Descriptions](#repository-files--descriptions)
+7. [Running the Model in MATLAB](#running-the-model-in-matlab)
 
 ---
 
-## Executive Summary
+## Overview
 
-In high-precision semiconductor fab environments (such as LAM Research chemical delivery systems), precise chemical dosing, line flushing, and sump overflow protection are critical to wafer yield and cleanroom safety.
+In semiconductor wafer manufacturing, chemical distribution rigs require precise dosing, controlled line flushing, and rapid sump overflow protection to prevent tool contamination and cleanroom safety hazards.
 
-This project delivers a **full-scale Industrial Digital Twin** for **LAM Research Challenge 3.0 (Stage 2)**:
-* **Physics-Based Hydraulic Model**: Models conservation of mass across three fluid vessels, pump motor characteristics, valve gating, and piping hydrodynamics ($8\text{ mm}$ lines, Reynolds number $Re \approx 8000$, turbulent flow).
-* **Firmware-Accurate Embedded Control**: Full embedded state machine matching ESP32 C++ firmware (`lam_stage2.ino`) with flow-rate stabilization checks, Schmitt-trigger float switch sump protection, and closed-loop volumetric flush shutdown.
-* **Professional Engineering Architecture**: 100% clean, standard black-and-white Simulink design with 4 modular subsystems, zero crossing wires, and no dangling tags.
+This repository contains the dynamic simulation model and embedded control logic developed for the **LAM Research Challenge 3.0 (Stage 2)**:
+* **Hydraulic System Simulation**: Solves conservation of mass and pressure-driven flow dynamics across three fluid vessels, pump motor curves, solenoid valve transitions, and pipe friction losses ($8\text{ mm}$ inner diameter lines, operating at turbulent conditions with $Re \approx 8000$).
+* **Firmware Implementation**: Incorporates the complete 9-state finite state machine (FSM) matching the ESP32 microcontroller C++ firmware (`lam_stage2.ino`), including digital filtering on the turbine flow meter, float switch hysteresis, and closed-loop volumetric cutoff.
+* **Simulink Model Structure**: Organized into four clean subsystems using standard, unstyled Simulink blocks and straight bus connections for clarity and ease of maintenance.
 
 ---
 
 ## Process Flow & P&ID Drawing (PID-001)
 
-The system strictly adheres to the engineering process flow schematic shown below:
+The simulation architecture mirrors the physical piping and instrumentation diagram (PID-001):
 
 ![P&ID Process Flow Schematic](images/pid_drawing_pid001.png)
 
-### Key Hydraulic Components:
-| Tag | Component | Description | Specification |
+### Equipment Specifications:
+| Tag | Component | Function | Operating Parameters |
 | :--- | :--- | :--- | :--- |
-| **T-01** | Process Supply Tank | Primary process fluid reservoir | $10.0\text{ L}$ capacity ($8.0\text{ L}$ initial fill) |
+| **T-01** | Process Supply Tank | Chemical reservoir | $10.0\text{ L}$ capacity, starting volume $8.0\text{ L}$ |
 | **OV-01** | Solenoid Valve | Electronic shutoff valve on process line `PW-1` | 2-position solenoid (Open / Closed) |
-| **T-02** | Flush Tank | Dedicated DI water / solvent flush reservoir | $4.2\text{ L}$ capacity ($4.2\text{ L}$ initial fill) |
-| **BV-01** | Manual Ball Valve | Manual isolation valve on flush line `FW-2` | Quarter-turn ball valve ($100\%$ open) |
-| **P-03** | Flush Pump | DC pump delivering flush solvent into tee `TE-01` | $Q_{\max} = 5.0\text{ L/min}$, PWM controlled |
-| **TE-01** | Pipe Tee Junction | Connects process line `PW-2` and flush line `PW-3` | Standard $8\text{ mm}$ hydraulic tee |
-| **P-01** | Process Feed Pump | Pulls from `TE-01` and discharges into sump `S-01` | $Q_{\max} = 6.0\text{ L/min}$ ($3.0\text{ L/min}$ at $50\%$ duty) |
-| **S-01** | Collection Sump | Intermediate buffer vessel | $4.2\text{ L}$ capacity ($0.5\text{ L}$ initial fill) |
-| **FS-01** | Sump Float Switch | Dual-threshold liquid level sensor with hysteresis | $3.5\text{ L}$ High Trip / $2.5\text{ L}$ Low Reset |
-| **P-02** | Recirculation Pump | Draws from sump bottom line `PW-5` into return loop | $Q_{\max} = 4.5\text{ L/min}$, PWM controlled |
-| **BV-02** | Manual Ball Valve | Isolation valve on return line `PW-6` | Quarter-turn ball valve ($100\%$ open) |
-| **FT-01** | Turbine Flow Sensor | In-line pulse flow transmitter ($5266\text{ pulses/L}$) | Passthrough reading with digital totalizer |
+| **T-02** | Flush Tank | Dedicated flush solvent reservoir | $4.2\text{ L}$ capacity, starting volume $4.2\text{ L}$ |
+| **BV-01** | Manual Ball Valve | Isolation valve on flush line `FW-2` | Quarter-turn manual valve ($100\%$ open) |
+| **P-03** | Flush Pump | DC motor-driven pump delivering flush fluid | $Q_{\max} = 5.0\text{ L/min}$, PWM controlled |
+| **TE-01** | Pipe Tee Junction | Merges process line `PW-2` with flush line `PW-3` | Standard $8\text{ mm}$ hydraulic junction |
+| **P-01** | Process Feed Pump | Pulls from `TE-01` and discharges into sump `S-01` | $Q_{\max} = 6.0\text{ L/min}$ ($3.0\text{ L/min}$ target at $50\%$ duty) |
+| **S-01** | Collection Sump | Intermediate buffer vessel | $4.2\text{ L}$ capacity, starting volume $0.5\text{ L}$ |
+| **FS-01** | Sump Float Switch | Dual-threshold level sensor with Schmitt hysteresis | $3.5\text{ L}$ High Trip / $2.5\text{ L}$ Low Reset |
+| **P-02** | Recirculation Pump | Pulls from sump drain line `PW-5` to recirculation line | $Q_{\max} = 4.5\text{ L/min}$, PWM controlled |
+| **BV-02** | Manual Ball Valve | Return line isolation valve | Quarter-turn manual valve ($100\%$ open) |
+| **FT-01** | Flow Transmitter | Turbine pulse flow meter ($5266\text{ pulses/L}$) | Passthrough reading with digital volume totalizer |
 
 ---
 
 ## Simulink Digital Twin Architecture
 
-The model [`lam_stage2_system.mdl`](lam_stage2_system.mdl) is structured hierarchically into 4 modular subsystems.
+The model [`lam_stage2_system.mdl`](lam_stage2_system.mdl) is constructed using four decoupled subsystems connected by straight bus lines without crossing signals or floating tags.
 
 ### Top-Level Architecture Overview
 
@@ -84,11 +83,11 @@ The model [`lam_stage2_system.mdl`](lam_stage2_system.mdl) is structured hierarc
                                                          +---------------------------------------------------------------------------------------------------+
 ```
 
-* **Signal Flow**: 
-  1. Operator commands flow from `HMI_Operator_Inputs` to `ESP32_Automation_Controller`.
-  2. The controller computes actuator PWMs and valve states, passing them to `Hydraulic_Process_Plant_PID001`.
-  3. Physical plant sensor signals flow back to the controller via closed feedback loop (`Sensor_Feedback`).
-  4. Real-time telemetry, actuator duties, and state codes feed directly into `SCADA_Monitoring_and_Scopes`.
+* **Signal Routing**:
+  1. Operator commands are packed into `HMI_Cmds` and routed to the `ESP32_Automation_Controller`.
+  2. The controller evaluates the current state and passes `Actuator_Commands` (pump PWMs and valve gating signals) to `Hydraulic_Process_Plant_PID001`.
+  3. Sensor telemetry (`Sensor_Feedback`) is fed back to the controller to close the loop on flow rate and sump liquid level.
+  4. Both telemetry and internal state codes are broadcast to `SCADA_Monitoring_and_Scopes` for logging and visualization.
 
 ---
 
@@ -96,11 +95,11 @@ The model [`lam_stage2_system.mdl`](lam_stage2_system.mdl) is structured hierarc
 
 ![HMI Operator Inputs](images/simulink_02_hmi_operator_inputs.png)
 
-* **`Rig_Push_Button`**: Step input representing the hardware push button pressed at $t = 1.0\text{ s}$ to initiate the automated sequence.
-* **`Flush_Ball_Valve_BV01`**: Manual ball valve state for line flush readiness.
-* **`Disturbance_Valve`**: Simulates sudden introduction of external liquid into the sump at $t = 90\text{ s}$ ($10\text{ L/min}$ for $25\text{ s}$) to test overflow protection.
-* **`Master_Clock`**: System clock providing elapsed simulation time.
-* **`Mux_HMI`**: Packs the 4 operator signals into the unified bus `HMI_Cmds`.
+* **`Rig_Push_Button`**: Generates a step command at $t = 1.0\text{ s}$ representing the hardware operator start switch.
+* **`Flush_Ball_Valve_BV01`**: Manual valve state confirmation flag.
+* **`Disturbance_Valve`**: Step pulse introducing external fluid ($10\text{ L/min}$ for $25\text{ s}$ starting at $t = 90\text{ s}$) to test the automatic sump high-level interlock.
+* **`Master_Clock`**: System simulation time source.
+* **`Mux_HMI`**: Combines operator inputs into the 4-signal `HMI_Cmds` bus.
 
 ---
 
@@ -109,12 +108,12 @@ The model [`lam_stage2_system.mdl`](lam_stage2_system.mdl) is structured hierarc
 ![ESP32 Automation Controller](images/simulink_03_esp32_controller.png)
 
 * **Inputs**:
-  - `HMI_Cmds`: Operator start command, valve states, and clock.
-  - `Sensor_Feedback`: Sump float switch state, FT-01 flow rate, and cumulative totalizer volume.
-* **`Embedded_FSM_Logic`**: High-performance Interpreted MATLAB Function executing firmware logic (`lam_esp32_controller.m`).
+  - `HMI_Cmds`: Operator start signal, valve statuses, and simulation clock.
+  - `Sensor_Feedback`: Sump float switch boolean, FT-01 measured flow rate, and cumulative volume.
+* **`Embedded_FSM_Logic`**: Executes the discrete-time firmware state machine via [`lam_esp32_controller.m`](lam_esp32_controller.m).
 * **Outputs**:
-  - `Actuator_Commands` (Bus): P1 duty ($0\text{--}100\%$), P2 duty ($0\text{--}100\%$), P3 duty ($0\text{--}100\%$), and OV-01 Solenoid command ($0$ or $1$).
-  - `State_Code`: Current operational state ($0\text{ to }8$) sent to SCADA.
+  - `Actuator_Commands`: Multiplexed bus containing P-01 duty ($0\text{--}100\%$), P-02 duty ($0\text{--}100\%$), P-03 duty ($0\text{--}100\%$), and OV-01 solenoid state ($0$ or $1$).
+  - `State_Code`: Current integer state ($0\text{ to }8$) routed to the SCADA subsystem.
 
 ---
 
@@ -122,23 +121,23 @@ The model [`lam_stage2_system.mdl`](lam_stage2_system.mdl) is structured hierarc
 
 ![Hydraulic Process Plant](images/simulink_04_hydraulic_plant_pid001.png)
 
-This subsystem implements the exact physical flow loop of P&ID Drawing PID-001:
+This subsystem implements the full hydraulic loop defined in P&ID Drawing PID-001:
 * **Flush Line Branch (Top)**:
-  - `T-02_Flush_Tank_4p2L`: Integrates outflow; drains as flush pump operates.
-  - `BV-01_Manual_Valve`: Multiplies available flush solvent by valve position.
-  - `P-03_Flush_Pump`: Delivers flush fluid into `TE-01_Tee_Junction`.
+  - `T-02_Flush_Tank_4p2L`: Integrator modeling inventory drawdown as P-03 operates.
+  - `BV-01_Manual_Valve`: Multiplies available solvent head by valve position.
+  - `P-03_Flush_Pump`: Delivers flush solvent into `TE-01_Tee_Junction`.
 * **Process Chemical Branch (Middle)**:
-  - `T-01_10L_Process`: $10\text{ L}$ reservoir; mass balance: $\frac{dV}{dt} = \frac{Q_{\text{return}} - Q_{\text{feed}}}{60}$.
-  - `OV-01_Solenoid_Valve`: Electronic shutoff valve.
-  - `TE-01_Tee_Junction`: Adds process fluid and flush fluid.
-  - `P-01_Feed_Pump`: Primary process pump discharging into the sump.
-  - `S-01_Sump_4p2L`: Buffer vessel; net flow: $\frac{dV}{dt} = \frac{Q_{\text{in}} + Q_{\text{dist}} - Q_{\text{out}}}{60}$.
-  - `FS-01_Float_Switch`: Relay block modeling Schmitt-trigger hysteresis ($3.5\text{ L}$ trip, $2.5\text{ L}$ reset).
+  - `T-01_10L_Process`: Primary vessel mass balance: $\frac{dV}{dt} = \frac{Q_{\text{return}} - Q_{\text{feed}}}{60}$.
+  - `OV-01_Solenoid_Valve`: Two-way isolation valve.
+  - `TE-01_Tee_Junction`: Flow convergence point for process fluid and flush solvent.
+  - `P-01_Feed_Pump`: Feed pump discharging into the collection sump.
+  - `S-01_Sump_4p2L`: Buffer vessel mass balance: $\frac{dV}{dt} = \frac{Q_{\text{feed}} + Q_{\text{dist}} - Q_{\text{recirc}}}{60}$.
+  - `FS-01_Float_Switch`: Relay block modeling physical float switch hysteresis ($3.5\text{ L}$ trip, $2.5\text{ L}$ reset).
 * **Recirculation Return Branch (Bottom)**:
-  - `P-02_Recirc_Pump`: Draws from sump bottom line `PW-5`.
-  - `BV-02_Manual_Valve`: Return loop isolation valve.
-  - `FT-01_Flow_Transmitter`: In-line turbine flow meter sending fluid back into `T-01`.
-* **`Mux_Telemetry`**: Bundles all tank levels, flow rates, and sensor flags into `Sensor_Feedback`.
+  - `P-02_Recirc_Pump`: Recirculation pump pulling from line `PW-5`.
+  - `BV-02_Manual_Valve`: Manual return line valve.
+  - `FT-01_Flow_Transmitter`: Flow sensor inline with return line `PW-8` returning to `T-01`.
+* **`Mux_Telemetry`**: Combines tank volumes, line flow rates, and sensor flags into `Sensor_Feedback`.
 
 ---
 
@@ -146,25 +145,24 @@ This subsystem implements the exact physical flow loop of P&ID Drawing PID-001:
 
 ![SCADA Monitoring & Scopes](images/simulink_05_scada_monitoring_scopes.png)
 
-* **Hydrodynamics Computer**: Continuously computes pipeline fluid mechanics:
+* **Hydrodynamics Computer**: Computes continuous physical line metrics:
   $$\text{Velocity: } v = \frac{Q}{A} = \frac{Q_{\text{Lpm}} / 60 / 1000}{\frac{\pi}{4} D^2} \quad [\text{m/s}]$$
   $$\text{Reynolds Number: } Re = \frac{\rho \cdot v \cdot D}{\mu} \approx 8000 \cdot v$$
-* **Digital Totalizer**: Integrates flow through FT-01 to compute cumulative transferred volume.
-* **7 Live Digital Displays**:
-  1. `Disp_10L_Tank_L`: T-01 level in Liters.
-  2. `Disp_Sump_Vessel_L`: S-01 Sump level in Liters.
-  3. `Disp_Flush_Tank_L`: T-02 Flush tank level in Liters.
-  4. `Disp_FT01_Flow_Lpm`: Instantaneous flow in L/min.
-  5. `Disp_Cumulative_Vol_L`: Cumulative volume in Liters.
-  6. `Disp_FSM_State_Code`: Current active state ($0\text{--}8$).
-  7. `Disp_Reynolds_Number`: Dimensionless flow regime indicator.
-* **5 Dedicated Scopes & To Workspace Data Loggers**:
-  - `Scope_Process_Tanks` / `Save_Tanks` $\rightarrow$ `tank_levels`
-  - `Scope_Pump_Duties` / `Save_Duties` $\rightarrow$ `pump_duties`
-  - `Scope_Flow_Sensor_FT01` / `Save_FT01` $\rightarrow$ `ft01_flow`
-  - `Save_TotalVol` $\rightarrow$ `total_volume`
-  - `Scope_Automation_State` / `Save_State` $\rightarrow$ `system_state`
-  - `Scope_Reynolds_Number`
+* **Digital Totalizer**: Integrates flow through `FT-01` to determine net delivered volume.
+* **Digital Readouts**:
+  - `Disp_10L_Tank_L`: T-01 level ($L$).
+  - `Disp_Sump_Vessel_L`: Sump level ($L$).
+  - `Disp_Flush_Tank_L`: T-02 level ($L$).
+  - `Disp_FT01_Flow_Lpm`: Instantaneous flow rate ($\text{L/min}$).
+  - `Disp_Cumulative_Vol_L`: Integrated volume ($L$).
+  - `Disp_FSM_State_Code`: Current operational state ($0\text{--}8$).
+  - `Disp_Reynolds_Number`: Flow regime indicator.
+* **Scopes & Data Loggers (`To Workspace`)**:
+  - `tank_levels`: Matrix of volumes across all three tanks.
+  - `pump_duties`: PWM duty cycles for P-01, P-02, and P-03.
+  - `ft01_flow`: Time series of the flow transmitter signal.
+  - `total_volume`: Cumulative volume output.
+  - `system_state`: State machine trajectory over time.
 
 ---
 
@@ -188,65 +186,65 @@ The controller executes an industrial finite state machine with safety interlock
 
 ## Simulation Results & Verification
 
-Simulation executed with fixed-step discrete solver ($\Delta t = 1.0\text{ ms}$, duration $T = 250\text{ s}$).
+The model was verified using a fixed-step discrete solver ($\Delta t = 1.0\text{ ms}$, duration $T = 250\text{ s}$).
 
 ### Figure 1: Tank Levels & Mass Conservation
-Shows volume conservation across all three vessels. In Case 1, Sump level remains tightly bounded between $1.7\text{ L}$ and $3.5\text{ L}$. At $t = 90\text{ s}$, an external disturbance causes the sump level to rise; `FS-01` trips at $3.5\text{ L}$, pauses `P-01`, and `P-02` rapidly drains the sump back to $2.5\text{ L}$ before resuming. In Case 2, Flush Tank `T-02` smoothly discharges its $4.2\text{ L}$ charge.
+Verifies volume conservation across all three vessels. In Case 1, Sump level remains bounded between $1.7\text{ L}$ and $3.5\text{ L}$. At $t = 90\text{ s}$, the disturbance causes the sump level to rise; `FS-01` trips at $3.5\text{ L}$, pauses `P-01`, and `P-02` drains the sump back to $2.5\text{ L}$ before feed flow resumes. In Case 2, Flush Tank `T-02` discharges its $4.2\text{ L}$ volume.
 
 ![Tank Levels](images/fig1_tank_levels.png)
 
 ### Figure 2: Dynamic Flow Profiles & Regulation
-Illustrates process feed rate ($3.0\text{ L/min}$ during Case 1), FT-01 recirculation flow, and the high-speed flush flow during Case 2 reaching $5.0\text{ L/min}$.
+Shows process feed rate ($3.0\text{ L/min}$ during Case 1 steady state), FT-01 recirculation flow, and the high-speed flush flow during Case 2 reaching $5.0\text{ L/min}$.
 
 ![Flow Rates](images/fig2_flow_rates.png)
 
 ### Figure 3: Pump PWM Duty Cycles & Valve States
-Shows actuator sequencing: P-01 ($50\%$), P-02 ($100\%$), OV-01 Solenoid (Open), the disturbance trip response, valve settling, and all pumps ramping to $100\%$ during the Case 2 flush.
+Illustrates actuator sequencing: P-01 ($50\%$), P-02 ($100\%$), OV-01 Solenoid (Open), the disturbance interlock response, valve settling, and all pumps operating at $100\%$ during the Case 2 flush.
 
 ![Pump Duties & Valves](images/fig3_pump_duties_valves.png)
 
 ### Figure 4: FSM Automation Trajectory
-Step-by-step state code progression demonstrating autonomous transition through all 9 operational states without operator intervention.
+Step-by-step state code progression demonstrating autonomous transition through all 9 operational states.
 
 ![FSM Trajectory](images/fig4_state_trajectory.png)
 
 ### Figure 5: Totalizer Cumulative Volume & Cutoff
-Cumulative volumetric totalizer tracking fluid through `FT-01`. Shows linear accumulation during Case 1, followed by precise automated cutoff when the Case 2 flush volume reaches the target $4.20\text{ L}$ ($4.33\text{ L}$ including piping hold-up, well below the $4.50\text{ L}$ ceiling).
+Cumulative volumetric totalizer tracking fluid through `FT-01`. Shows linear accumulation during Case 1, followed by automated cutoff when the Case 2 flush volume reaches the target $4.20\text{ L}$ ($4.33\text{ L}$ actual, safely below the $4.50\text{ L}$ maximum limit).
 
 ![Total Volume](images/fig5_total_volume.png)
 
 ### Figure 6: Fluid Velocity & Reynolds Number Dynamics
-Fluid mechanics analytics: line velocity reaches $0.99\text{ m/s}$ in Case 1 and $1.5\text{ m/s}$ in Case 2. Reynolds number maintains $Re \approx 8000$ to $12000$, ensuring fully turbulent cleaning flow through the $8\text{ mm}$ line.
+Pipeline velocity reaches $0.99\text{ m/s}$ in Case 1 and $1.5\text{ m/s}$ in Case 2. Reynolds number maintains $Re \approx 8000$ to $12000$, ensuring fully turbulent flow throughout the flush cycle.
 
 ![Fluid Dynamics](images/fig6_fluid_dynamics.png)
 
 ---
 
-## Repository Files & Explanations
+## Repository Files & Descriptions
 
-| File | Purpose / Role |
+| File | Description |
 | :--- | :--- |
-| **`lam_stage2_system.mdl`** | **Primary Simulink Digital Twin Model**. Contains the 4 modular subsystems, clean black & white styling, and P&ID flow loop. |
-| **`lam_system_params.m`** | **System Parameters Script**. Defines tank capacities, pump flow ratings, valve timings, sensor thresholds, and pipe diameters in the base workspace. |
-| **`lam_esp32_controller.m`** | **Embedded Firmware Engine**. Pure MATLAB function implementing the 9-state finite state machine with timing delays and float switch protection. |
-| **`lam_controller_wrapper.m`** | **Simulink Block Interface**. Formats bus vector inputs and outputs between Simulink and `lam_esp32_controller.m`. |
-| **`run_lam_simulation.m`** | **Automated Test & Plotting Runner**. Runs the simulation, extracts logged telemetry, generates all 6 publication figures, and prints an engineering KPI report. |
-| **`lam_plant_controller.m`** | **Discrete State-Space Engine**. Standalone script simulating both plant and controller without requiring Simulink for rapid batch verification. |
-| **`build_clean_pid_model.py`** | **Model Generator Utility**. Python script that regenerates `lam_stage2_system.mdl` with pure black-and-white standard layout. |
-| **`build_human_pid_model.py`** | **Source Definition of Clean Model**. Complete ASCII definition of the 4 subsystems and clean P&ID routing. |
-| **`.gitignore`** | **Git Ignore File**. Prevents MATLAB compilation caches (`*.slxc`), autosaves (`*.asv`), and temporary files from cluttering the repo. |
-| **`images/`** | **Documentation Assets**. Contains the official P&ID drawing, all 5 Simulink subsystem screenshots, and all 6 simulation results figures. |
+| **`lam_stage2_system.mdl`** | Primary Simulink Digital Twin Model containing the four modular subsystems. |
+| **`lam_system_params.m`** | Physical and controller parameters script loaded into the MATLAB workspace. |
+| **`lam_esp32_controller.m`** | MATLAB implementation of the 9-state embedded firmware state machine. |
+| **`lam_controller_wrapper.m`** | Signal bus interface wrapper between Simulink and `lam_esp32_controller.m`. |
+| **`run_lam_simulation.m`** | Test runner script that executes the simulation and generates all 6 verification plots. |
+| **`lam_plant_controller.m`** | Standalone mathematical verification engine for headless simulation. |
+| **`build_clean_pid_model.py`** | Python utility used to programmatically generate `lam_stage2_system.mdl`. |
+| **`build_human_pid_model.py`** | ASCII definitions and layout coordinates for the 4-subsystem model. |
+| **`.gitignore`** | Excludes temporary MATLAB caches (`*.slxc`), autosaves, and backup files. |
+| **`images/`** | Contains the P&ID drawing, all 5 subsystem screenshots, and simulation result figures. |
 
 ---
 
-## Getting Started (Run in MATLAB)
+## Running the Model in MATLAB
 
 ### Prerequisites
 * MATLAB R2020a through R2024b (or newer)
 * Simulink
 
-### Quick Execution
-1. Open MATLAB and navigate to the project directory:
+### Execution Steps
+1. Navigate to the project directory:
    ```matlab
    cd('d:\matalb_;lam');
    ```
@@ -254,39 +252,7 @@ Fluid mechanics analytics: line velocity reaches $0.99\text{ m/s}$ in Case 1 and
    ```matlab
    open_system('lam_stage2_system.mdl');
    ```
-3. Run the automated simulation and plot all 6 engineering figures:
+3. Run the automated test script to simulate and generate all figures:
    ```matlab
    run_lam_simulation;
    ```
-
----
-
-## Git Instructions (Pushing to GitHub)
-
-To push this repository to your GitHub account:
-
-```bash
-# 1. Open PowerShell or Command Prompt in the project folder
-cd "d:\matalb_;lam"
-
-# 2. Check the staged files
-git status
-
-# 3. Add all files
-git add .
-
-# 4. Create your initial commit
-git commit -m "feat: complete LAM Stage 2 industrial digital twin and P&ID documentation"
-
-# 5. Set the main branch
-git branch -M main
-
-# 6. Add your GitHub remote URL (replace with your personal GitHub URL)
-git remote add origin https://github.com/<YOUR-USERNAME>/<YOUR-REPO-NAME>.git
-
-# 7. Push to GitHub
-git push -u origin main
-```
-
----
-*Developed for LAM Research Challenge 3.0 — Stage 2 Process Automation & Digital Twin Architecture.*
