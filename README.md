@@ -226,12 +226,9 @@ Pipeline velocity reaches $0.99\text{ m/s}$ in Case 1 and $1.5\text{ m/s}$ in Ca
 | :--- | :--- |
 | **`lam_stage2_system.mdl`** | Primary Simulink Digital Twin Model containing the four modular subsystems. |
 | **`lam_system_params.m`** | Physical and controller parameters script loaded into the MATLAB workspace. |
-| **`lam_esp32_controller.m`** | MATLAB implementation of the 9-state embedded firmware state machine. |
+| **`lam_esp32_controller.m`** | Embedded firmware logic implementing the 9-state finite state machine. |
 | **`lam_controller_wrapper.m`** | Signal bus interface wrapper between Simulink and `lam_esp32_controller.m`. |
-| **`run_lam_simulation.m`** | Test runner script that executes the simulation and generates all 6 verification plots. |
-| **`lam_plant_controller.m`** | Standalone mathematical verification engine for headless simulation. |
-| **`build_clean_pid_model.py`** | Python utility used to programmatically generate `lam_stage2_system.mdl`. |
-| **`build_human_pid_model.py`** | ASCII definitions and layout coordinates for the 4-subsystem model. |
+| **`run_lam_simulation.m`** | Automated script to run the simulation and generate all 6 verification plots. |
 | **`.gitignore`** | Excludes temporary MATLAB caches (`*.slxc`), autosaves, and backup files. |
 | **`images/`** | Contains the P&ID drawing, all 5 subsystem screenshots, and simulation result figures. |
 
